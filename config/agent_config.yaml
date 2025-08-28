@@ -1,0 +1,201 @@
+agent_config:
+  name: "Langie - Customer Support Agent"
+  description: "A structured and logical LangGraph Agent for customer support workflows"
+  version: "1.0.0"
+
+input_schema:
+  customer_name:
+    type: "string"
+    required: true
+    description: "Name of the customer submitting the support request"
+  email:
+    type: "string"
+    required: true
+    description: "Customer's email address"
+  query:
+    type: "string"
+    required: true
+    description: "Customer's support query or issue description"
+  priority:
+    type: "string"
+    required: true
+    enum: ["low", "medium", "high", "critical"]
+    description: "Priority level of the support ticket"
+  ticket_id:
+    type: "string"
+    required: true
+    description: "Unique identifier for the support ticket"
+
+stages:
+  - id: 1
+    name: "INTAKE"
+    description: "Accept incoming request payload"
+    mode: "entry_point"
+    abilities:
+      - name: "accept_payload"
+        description: "Capture incoming request payload"
+        server: "internal"
+    user_prompt: "Process incoming customer support request"
+
+  - id: 2
+    name: "UNDERSTAND"
+    description: "Parse request text and extract entities"
+    mode: "deterministic"
+    abilities:
+      - name: "parse_request_text"
+        description: "Convert unstructured request to structured data"
+        server: "COMMON"
+      - name: "extract_entities"
+        description: "Identify product, account, dates"
+        server: "ATLAS"
+    user_prompt: "Execute abilities in sequence to understand the request"
+
+  - id: 3
+    name: "PREPARE"
+    description: "Normalize fields, enrich records, add flags calculations"
+    mode: "deterministic"
+    abilities:
+      - name: "normalize_fields"
+        description: "Standardize dates, codes, IDs"
+        server: "COMMON"
+      - name: "enrich_records"
+        description: "Add SLA, historical ticket info"
+        server: "ATLAS"
+      - name: "add_flags_calculations"
+        description: "Compute priority or SLA risk"
+        server: "COMMON"
+    user_prompt: "Execute abilities in sequence to prepare data for processing"
+
+  - id: 4
+    name: "ASK"
+    description: "Request missing information from customer"
+    mode: "human_interaction"
+    abilities:
+      - name: "clarify_question"
+        description: "Request missing information"
+        server: "ATLAS"
+    user_prompt: "Generate clarification questions for missing information"
+
+  - id: 5
+    name: "WAIT"
+    description: "Wait and capture customer response"
+    mode: "deterministic"
+    abilities:
+      - name: "extract_answer"
+        description: "Wait and capture concise response"
+        server: "ATLAS"
+      - name: "store_answer"
+        description: "Update payload with response"
+        server: "internal"
+    user_prompt: "Execute abilities in sequence to capture customer response"
+
+  - id: 6
+    name: "RETRIEVE"
+    description: "Search knowledge base and store data"
+    mode: "deterministic"
+    abilities:
+      - name: "knowledge_base_search"
+        description: "Lookup KB or FAQ"
+        server: "ATLAS"
+      - name: "store_data"
+        description: "Attach retrieved info to payload"
+        server: "internal"
+    user_prompt: "Execute abilities in sequence to retrieve relevant information"
+
+  - id: 7
+    name: "DECIDE"
+    description: "Score solutions and make escalation decision"
+    mode: "non_deterministic"
+    abilities:
+      - name: "solution_evaluation"
+        description: "Score potential solutions 1-100"
+        server: "COMMON"
+      - name: "escalation_decision"
+        description: "Assign to human agent if score <90"
+        server: "ATLAS"
+      - name: "update_payload"
+        description: "Record decision outcomes"
+        server: "internal"
+    user_prompt: "Score solutions and escalate if confidence <90"
+
+  - id: 8
+    name: "UPDATE"
+    description: "Update and close tickets"
+    mode: "deterministic"
+    abilities:
+      - name: "update_ticket"
+        description: "Modify status, fields, priority"
+        server: "ATLAS"
+      - name: "close_ticket"
+        description: "Mark issue resolved"
+        server: "ATLAS"
+    user_prompt: "Execute abilities in sequence to update ticket status"
+
+  - id: 9
+    name: "CREATE"
+    description: "Generate customer response"
+    mode: "deterministic"
+    abilities:
+      - name: "response_generation"
+        description: "Draft customer reply"
+        server: "COMMON"
+    user_prompt: "Execute abilities in sequence to generate customer response"
+
+  - id: 10
+    name: "DO"
+    description: "Execute API calls and trigger notifications"
+    mode: "deterministic"
+    abilities:
+      - name: "execute_api_calls"
+        description: "Trigger CRM/order system actions"
+        server: "ATLAS"
+      - name: "trigger_notifications"
+        description: "Notify customer"
+        server: "ATLAS"
+    user_prompt: "Execute abilities in sequence to perform actions and notifications"
+
+  - id: 11
+    name: "COMPLETE"
+    description: "Output final structured payload"
+    mode: "exit_point"
+    abilities:
+      - name: "output_payload"
+        description: "Print final structured payload"
+        server: "internal"
+    user_prompt: "Generate final structured output payload"
+
+mcp_servers:
+  COMMON:
+    description: "Internal abilities with no external data requirements"
+    abilities:
+      - "parse_request_text"
+      - "normalize_fields"
+      - "add_flags_calculations"
+      - "solution_evaluation"
+      - "response_generation"
+    
+  ATLAS:
+    description: "External system interaction abilities"
+    abilities:
+      - "extract_entities"
+      - "enrich_records"
+      - "clarify_question"
+      - "extract_answer"
+      - "knowledge_base_search"
+      - "escalation_decision"
+      - "update_ticket"
+      - "close_ticket"
+      - "execute_api_calls"
+      - "trigger_notifications"
+
+personality:
+  name: "Langie"
+  traits:
+    - "Structured and logical"
+    - "Thinks in stages"
+    - "Carefully carries forward state variables"
+    - "Knows when to execute sequentially vs dynamically"
+    - "Orchestrates MCP clients effectively"
+    - "Logs every decision clearly"
+    - "Outputs structured payloads"
+
