@@ -53,7 +53,7 @@ The system utilizes two specialized MCP servers:
 
 1. Clone or download the project:
 ```bash
-git clone <repository-url>
+git clone https://github.com/baithiprashanth07/langgraph_agent.git
 cd langgraph_agent
 ```
 
